@@ -8,9 +8,7 @@
     Copyright (C) 2010 - 2011
     bg <bg_one@mail.ru>
 */
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include "ast_config.h"
 
 #include <sys/types.h>
 
@@ -78,7 +76,7 @@ static ssize_t hexstr_to_8bitchars (const char* in, size_t in_length, char* out,
 		return -ENOMEM;
 	}
 	out_size = in_length;
-	
+
 	for (; in_length; --in_length)
 	{
 		d1 = parse_hexdigit(*in++);
@@ -105,7 +103,7 @@ static ssize_t chars8bit_to_hexstr (const char* in, size_t in_length, char* out,
 		return -1;
 	}
 	out_size = in_length * 2;
-	
+
 	for (; in_length; --in_length, ++in2)
 	{
 		*out++ = hex_table[*in2 >> 4];
@@ -133,7 +131,10 @@ static ssize_t hexstr_ucs2_to_utf8 (const char* in, size_t in_length, char* out,
 		return res;
 	}
 
-	res = convert_string (buf, res, out, out_size, "UCS-2BE", "UTF-8");
+	/* Since UTF-16BE is a superset of UCS-2BE -- using unused code
+	 * points from UCS-2 -- we can safely assume that UTF-16BE works
+	 * here. */
+	res = convert_string (buf, res, out, out_size, "UTF-16BE", "UTF-8");
 
 	return res;
 }
@@ -148,7 +149,10 @@ static ssize_t utf8_to_hexstr_ucs2 (const char* in, size_t in_length, char* out,
 		return -1;
 	}
 
-	res = convert_string (in, in_length, buf, out_size, "UTF-8", "UCS-2BE");
+	/* Since UTF-16BE is a superset of UCS-2BE -- using unused code
+	 * points from UCS-2 -- we can safely assume that UTF-16BE works
+	 * here. */
+	res = convert_string (in, in_length, buf, out_size, "UTF-8", "UTF-16BE");
 	if (res < 0)
 	{
 		return res;
@@ -235,11 +239,20 @@ static ssize_t hexstr_7bit_to_char (const char* in, size_t in_length, char* out,
 		c = (c >> 1) | b;
 		b = ((unsigned char) hexval) >> (8 - s);
 
+		if (c == 0 && i + 1 < in_length) {
+			/* @ is encoded as NUL */
+			c = '@';
+		}
+
 		out[x] = c;
 		x++; s++;
 
 		if (s == 8)
 		{
+			if (b == 0 && i + 1 < in_length) {
+				/* @ is encoded as NUL */
+				b = '@';
+			}
 			out[x] = b;
 			s = 1; b = 0;
 			x++;

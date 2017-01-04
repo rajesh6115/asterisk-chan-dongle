@@ -7,6 +7,7 @@ AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([chan_dongle.c])
+AC_CONFIG_FILES([stamp-h], [echo timestamp > stamp-h])
 AC_CANONICAL_SYSTEM
 AC_CANONICAL_HOST
 
@@ -22,6 +23,16 @@ AC_ARG_WITH(
 	[ if test "x$with_asterisk" = "xyes" -o "x$with_asterisk" = "xno" ; then  AC_MSG_ERROR([Invalid --with-asterisk=path value]); fi ],
 	[ with_asterisk="../include /usr/include /usr/local/include /opt/local/include" ]
 )
+
+dnl  Required: asterisk version
+AC_ARG_WITH(
+	[astversion],
+	AS_HELP_STRING([--with-astversion=Mmmuu], [set asterisk version; examples: 1.8.13 => 10813, 11.1.2 => 110102]),
+	[ if ! test "$((with_astversion + 0))" -eq "$with_astversion" ; then AC_MSG_ERROR([Invalid --with-astversion=Mmmuu value]); fi ],
+	[ AC_MSG_ERROR([Please set --with-astversion=Mmmuu (major.minor.micro)]) ]
+)
+AC_DEFINE_UNQUOTED([ASTERISK_VERSION_NUM], [$with_astversion],
+		   [The Asterisk version as configured --with-astversion.])
 
 AC_ARG_ENABLE(
 	[debug], 
@@ -201,12 +212,17 @@ else
   CFLAGS="$CFLAGS -O6"
 fi
 
+dnl Asterisk header files use lots of old style declarations, ignore those.
+dnl > warning: ‘inline’ is not at beginning of declaration [-Wold-style-declaration]
+dnl >   static void force_inline _ast_assert(...)
+CFLAGS="$CFLAGS -Wno-old-style-declaration"
+
 if test "x$enable_manager" = "xyes" ; then
-  AC_DEFINE([BUILD_MANAGER],[1], [Build Manager extentions])
+  AC_DEFINE([BUILD_MANAGER],[1], [Build Manager extensions])
 fi
 
 if test "x$enable_apps" = "xyes" ; then
-  AC_DEFINE([BUILD_APPLICATIONS],[1],[Build extention applications])
+  AC_DEFINE([BUILD_APPLICATIONS],[1],[Build Application extensions])
 fi
 
 case "$target_os" in
